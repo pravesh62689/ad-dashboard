@@ -1,0 +1,71 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run verify
+
+      - name: Ensure KV namespace exists
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const token = process.env.CLOUDFLARE_API_TOKEN;
+            const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+            if (!token || !accountId) {
+              console.error("Missing CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID secret.");
+              process.exit(1);
+            }
+            const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`;
+            const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+            (async () => {
+              const listRes = await fetch(`${base}?per_page=100`, { headers });
+              const listJson = await listRes.json();
+              if (!listJson.success) {
+                console.error("Failed to list KV namespaces:", listJson.errors);
+                process.exit(1);
+              }
+              let ns = (listJson.result || []).find((n) => n.title === "ad-dashboard-kv");
+              if (!ns) {
+                const createRes = await fetch(base, {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({ title: "ad-dashboard-kv" }),
+                });
+                const createJson = await createRes.json();
+                if (!createJson.success) {
+                  console.error("Failed to create KV namespace:", createJson.errors);
+                  process.exit(1);
+                }
+                ns = createJson.result;
+              }
+              const toml = fs.readFileSync("wrangler.toml", "utf8").replace(
+                "REPLACE_WITH_KV_NAMESPACE_ID",
+                ns.id
+              );
+              fs.writeFileSync("wrangler.toml", toml, "utf8");
+              console.log("Using KV namespace ID:", ns.id);
+            })();
+          '
+
+      - name: Deploy with Wrangler Action
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

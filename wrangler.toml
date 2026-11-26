@@ -1,0 +1,11 @@
+name = "ad-dashboard"
+main = "src/index.ts"
+compatibility_date = "2025-11-01"
+workers_dev = true
+
+[triggers]
+crons = ["0 * * * *"]
+
+[[kv_namespaces]]
+binding = "DASHBOARD_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
