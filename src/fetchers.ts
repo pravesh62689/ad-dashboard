@@ -40,7 +40,7 @@ async function fetchAdsterra(env: Env, windows: DateWindows): Promise<AdsterraDa
         const url = new URL('https://api3.adsterratools.com/publisher/stats.json');
         url.searchParams.set('start_date', start);
         url.searchParams.set('finish_date', windows.todayStr);
-        url.searchParams.append('group_by[]', 'ddate');
+        url.searchParams.append('group_by[]', 'date');
         url.searchParams.append('group_by[]', 'placement');
 
         const headers = {
@@ -54,9 +54,10 @@ async function fetchAdsterra(env: Env, windows: DateWindows): Promise<AdsterraDa
         ]);
 
         if (!statsRes.ok) {
+            const detail = (await statsRes.text().catch(() => '')).slice(0, 120);
             return {
                 status: 'error',
-                error: statsRes.status === 401 ? 'error: invalid token' : `HTTP ${statsRes.status}`,
+                error: statsRes.status === 401 ? 'error: invalid token' : `HTTP ${statsRes.status}${detail ? `: ${detail}` : ''}`,
                 balance: null,
                 today: emptyMetrics(),
                 last7d: emptyMetrics(),
