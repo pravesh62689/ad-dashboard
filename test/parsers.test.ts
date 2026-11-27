@@ -62,8 +62,13 @@ describe('Clickadu parser', () => {
         expect(parsed.today.impressions).toBe(800);
         expect(parsed.today.revenue).toBe(0.8);
         expect(parsed.last7d.revenue).toBe(2);
+        expect(parsed.last30d?.revenue).toBe(4);
         expect(parsed.month.revenue).toBe(4);
         expect(parsed.daily['2026-11-24']).toBe(1.2);
+
+        const bad = parseClickaduStats({ status: false, error: 'Invalid token' }, WINDOWS);
+        expect(bad.status).toBe('error');
+        expect(bad.error).toBe('Invalid token');
     });
 });
 

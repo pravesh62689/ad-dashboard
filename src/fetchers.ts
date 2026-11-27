@@ -113,20 +113,35 @@ async function fetchClickadu(env: Env, windows: DateWindows): Promise<ClickaduDa
 
     try {
         const start = windows.thirtyDaysAgoStr < windows.monthStartStr ? windows.thirtyDaysAgoStr : windows.monthStartStr;
-        const url = new URL('https://v2.api.clickadu.com/partner/stats');
-        url.searchParams.set('token', env.CLICKADU_API_TOKEN);
-        url.searchParams.set('dateFrom', start);
-        url.searchParams.set('dateTo', windows.todayStr);
-        url.searchParams.set('groupBy', 'day');
-        url.searchParams.set('format', 'json');
+        const buildUrl = (proto: 'https' | 'http') => {
+            const u = new URL(`${proto}://v2.api.clickadu.com/partner/stats`);
+            u.searchParams.set('token', env.CLICKADU_API_TOKEN!);
+            u.searchParams.set('dateFrom', start);
+            u.searchParams.set('dateTo', windows.todayStr);
+            u.searchParams.set('groupBy', 'day');
+            u.searchParams.set('format', 'json');
+            u.searchParams.set('timezone', 'EST');
+            return u.toString();
+        };
 
-        const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+        let res: Response;
+        try {
+            res = await fetch(buildUrl('https'), { headers: { Accept: 'application/json' } });
+            if (res.status >= 500) {
+                res = await fetch(buildUrl('http'), { headers: { Accept: 'application/json' } });
+            }
+        } catch {
+            res = await fetch(buildUrl('http'), { headers: { Accept: 'application/json' } });
+        }
+
         if (!res.ok) {
+            const detail = (await res.text().catch(() => '')).slice(0, 120);
             return {
                 status: 'error',
-                error: `HTTP ${res.status}`,
+                error: `HTTP ${res.status}${detail ? `: ${detail}` : ''}`,
                 today: emptyMetrics(),
                 last7d: emptyMetrics(),
+                last30d: emptyMetrics(),
                 month: emptyMetrics(),
                 daily: {},
             };

@@ -277,6 +277,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
           <tbody>
             ${renderPeriodRow('Today', snapshot.clickadu.today)}
             ${renderPeriodRow('Last 7 days', snapshot.clickadu.last7d)}
+            ${renderPeriodRow('Last 30 days', snapshot.clickadu.last30d ?? snapshot.clickadu.month)}
             ${renderPeriodRow('This month', snapshot.clickadu.month)}
           </tbody>
         </table>
