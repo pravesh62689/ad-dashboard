@@ -117,6 +117,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.cf.outputs.account_id }}
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
+          ADSTERRA_API_TOKEN: ${{ secrets.ADSTERRA_API_TOKEN }}
+          CLICKADU_API_TOKEN: ${{ secrets.CLICKADU_API_TOKEN }}
           CF_ANALYTICS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ steps.cf.outputs.account_id }}
           CF_WEB_ANALYTICS_SITE_TAG: ${{ steps.cf.outputs.site_tag || secrets.CF_WEB_ANALYTICS_SITE_TAG }}
@@ -126,7 +128,7 @@ jobs:
           GSC_SHIFTANDTIP_REFRESH_TOKEN: ${{ secrets.GSC_SHIFTANDTIP_REFRESH_TOKEN }}
           BLOGGER_REFRESH_TOKEN: ${{ secrets.BLOGGER_REFRESH_TOKEN }}
         run: |
-          for name in DASH_PASSWORD CF_ANALYTICS_TOKEN CF_ACCOUNT_ID CF_WEB_ANALYTICS_SITE_TAG GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GSC_FILEBRIK_REFRESH_TOKEN GSC_SHIFTANDTIP_REFRESH_TOKEN BLOGGER_REFRESH_TOKEN; do
+          for name in DASH_PASSWORD ADSTERRA_API_TOKEN CLICKADU_API_TOKEN CF_ANALYTICS_TOKEN CF_ACCOUNT_ID CF_WEB_ANALYTICS_SITE_TAG GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GSC_FILEBRIK_REFRESH_TOKEN GSC_SHIFTANDTIP_REFRESH_TOKEN BLOGGER_REFRESH_TOKEN; do
             val="${!name:-}"
             if [ -n "$val" ]; then
               printf '%s' "$val" | npx --yes wrangler@3 secret put "$name"

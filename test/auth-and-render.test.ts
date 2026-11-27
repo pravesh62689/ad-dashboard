@@ -109,6 +109,7 @@ describe('Dashboard HTML renderer', () => {
         expect(html).toContain('token expired');
         expect(html).toContain('npm run reauth');
         expect(html).not.toContain('Stale data');
+        expect(html).toContain('Approved — API token pending');
         expect(html).toContain('Pending');
         expect(html).toContain('32499187');
         expect(html).toContain('praveshrathore2002@gmail.com');

@@ -251,6 +251,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
           <tbody>
             ${renderPeriodRow('Today', snapshot.adsterra.today)}
             ${renderPeriodRow('Last 7 days', snapshot.adsterra.last7d)}
+            ${renderPeriodRow('Last 30 days', snapshot.adsterra.last30d ?? snapshot.adsterra.month)}
             ${renderPeriodRow('This month', snapshot.adsterra.month)}
           </tbody>
         </table>
@@ -269,7 +270,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
         <h3>Clickadu Publisher</h3>
         ${statusBadge(snapshot.clickadu.status)}
       </div>
-      <p class="muted">${snapshot.clickadu.status === 'pending' ? 'Pending approval / API token not configured' : esc(snapshot.clickadu.error ?? 'Active')}</p>
+      <p class="muted">${snapshot.clickadu.status === 'pending' ? 'Approved — API token pending' : esc(snapshot.clickadu.error ?? 'Active')}</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Period</th><th>Impr.</th><th>Clicks</th><th>CPM</th><th>Revenue</th></tr></thead>

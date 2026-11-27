@@ -46,6 +46,7 @@ export interface AdsterraUnitData {
     label: string;
     today: PeriodMetrics;
     last7d: PeriodMetrics;
+    last30d?: PeriodMetrics;
     month: PeriodMetrics;
 }
 
@@ -55,6 +56,7 @@ export interface AdsterraData {
     balance: number | null;
     today: PeriodMetrics;
     last7d: PeriodMetrics;
+    last30d?: PeriodMetrics;
     month: PeriodMetrics;
     units: AdsterraUnitData[];
     daily: Record<string, number>;
@@ -65,6 +67,7 @@ export interface ClickaduData {
     error?: string;
     today: PeriodMetrics;
     last7d: PeriodMetrics;
+    last30d?: PeriodMetrics;
     month: PeriodMetrics;
     daily: Record<string, number>;
 }

@@ -34,6 +34,9 @@ describe('Adsterra parser', () => {
         expect(parsed.last7d.impressions).toBe(3500);
         expect(parsed.last7d.revenue).toBe(3);
 
+        expect(parsed.last30d?.impressions).toBe(7500);
+        expect(parsed.last30d?.revenue).toBe(5);
+
         expect(parsed.month.impressions).toBe(7500);
         expect(parsed.month.revenue).toBe(5);
 

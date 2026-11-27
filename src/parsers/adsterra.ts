@@ -25,6 +25,7 @@ export function parseAdsterraStats(
 
     const today = emptyMetrics();
     const last7d = emptyMetrics();
+    const last30d = emptyMetrics();
     const month = emptyMetrics();
     const daily: Record<string, number> = {};
 
@@ -61,6 +62,9 @@ export function parseAdsterraStats(
             addRowToMetrics(last7d, impressions, clicks, revenue);
             if (unit) addRowToMetrics(unit.last7d, impressions, clicks, revenue);
         }
+        if (date >= windows.thirtyDaysAgoStr && date <= windows.todayStr) {
+            addRowToMetrics(last30d, impressions, clicks, revenue);
+        }
         if (date >= windows.monthStartStr && date <= windows.todayStr) {
             addRowToMetrics(month, impressions, clicks, revenue);
             if (unit) addRowToMetrics(unit.month, impressions, clicks, revenue);
@@ -72,6 +76,7 @@ export function parseAdsterraStats(
         balance,
         today,
         last7d,
+        last30d,
         month,
         units: ADSTERRA_UNITS.map((u) => unitMap.get(u.placementId)!),
         daily,
