@@ -37,7 +37,7 @@ async function fetchAdsterra(env: Env, windows: DateWindows): Promise<AdsterraDa
 
     try {
         const start = windows.thirtyDaysAgoStr < windows.monthStartStr ? windows.thirtyDaysAgoStr : windows.monthStartStr;
-        const url = new URL('https://api3.adsterra.com/publisher/stats.json');
+        const url = new URL('https://api3.adsterratools.com/publisher/stats.json');
         url.searchParams.set('start_date', start);
         url.searchParams.set('finish_date', windows.todayStr);
         url.searchParams.append('group_by[]', 'ddate');
@@ -50,7 +50,7 @@ async function fetchAdsterra(env: Env, windows: DateWindows): Promise<AdsterraDa
 
         const [statsRes, balRes] = await Promise.all([
             fetch(url.toString(), { headers }),
-            fetch('https://api3.adsterra.com/publisher/balance.json', { headers }).catch(() => null),
+            fetch('https://api3.adsterratools.com/publisher/balance.json', { headers }).catch(() => null),
         ]);
 
         if (!statsRes.ok) {
