@@ -29,4 +29,11 @@ export const ACCOUNTS_AND_PAYOUTS: AccountPayoutRow[] = [
         adNetworks: 'Google AdSense (x/20 substantial posts gate)',
         payoutMethodAndMin: 'PNB Bank Transfer (after AdSense approval, $100 min)',
     },
+    {
+        site: 'spinpick.pages.dev',
+        host: 'Cloudflare Pages',
+        owningEmail: 'praveshrathore2002@gmail.com',
+        adNetworks: 'Adsterra + Clickadu (Pending site approval)',
+        payoutMethodAndMin: 'Adsterra: PayPal ($25 min); Clickadu: after KYC',
+    },
 ];

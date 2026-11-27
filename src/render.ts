@@ -132,7 +132,11 @@ export function isSnapshotStale(updatedAt: string, now: Date = new Date()): bool
 }
 
 export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new Date()): string {
-  const anyExpired = snapshot.gsc.filebrik.tokenExpired || snapshot.gsc.shiftandtip.tokenExpired || snapshot.blogger.tokenExpired;
+  const anyExpired =
+    snapshot.gsc.filebrik.tokenExpired ||
+    snapshot.gsc.shiftandtip.tokenExpired ||
+    Boolean(snapshot.gsc.spinpick?.tokenExpired) ||
+    snapshot.blogger.tokenExpired;
   const isStale = isSnapshotStale(snapshot.updatedAt, now);
 
   const totalToday = snapshot.adsterra.today.revenue + snapshot.clickadu.today.revenue;
@@ -288,6 +292,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
   <div class="grid-2" style="margin-top:16px">
     ${renderGscCard('FileBrik', snapshot.gsc.filebrik)}
     ${renderGscCard('Shift &amp; Tip', snapshot.gsc.shiftandtip)}
+    ${snapshot.gsc.spinpick ? renderGscCard('SpinPick', snapshot.gsc.spinpick) : ''}
   </div>
 
   <div class="grid-2" style="margin-top:16px">
@@ -309,6 +314,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
       <div class="table-wrap">
         <table><thead><tr><th>Country</th><th>Views</th><th>Visitors</th></tr></thead><tbody>${countryRows}</tbody></table>
       </div>
+      ${snapshot.cfAnalyticsSpinpick ? `<h4>SpinPick — spinpick.pages.dev (${statusBadge(snapshot.cfAnalyticsSpinpick.status)})</h4><div class="mini-grid"><div><span class="k">Visitors</span><span class="v">${fmtNum(snapshot.cfAnalyticsSpinpick.visitors)}</span></div><div><span class="k">Pageviews</span><span class="v">${fmtNum(snapshot.cfAnalyticsSpinpick.pageviews)}</span></div></div>` : ''}
     </section>
 
     <section class="card">

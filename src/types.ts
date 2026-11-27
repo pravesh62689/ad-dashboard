@@ -25,6 +25,7 @@ export interface Env {
     CF_ANALYTICS_TOKEN?: string;
     CF_ACCOUNT_ID?: string;
     CF_WEB_ANALYTICS_SITE_TAG?: string;
+    CF_SPINPICK_SITE_TAG?: string;
 }
 
 export interface PeriodMetrics {
@@ -138,8 +139,10 @@ export interface DashboardSnapshot {
     gsc: {
         filebrik: GscSiteData;
         shiftandtip: GscSiteData;
+        spinpick?: GscSiteData;
     };
     cfAnalytics: CfAnalyticsData;
+    cfAnalyticsSpinpick?: CfAnalyticsData;
     blogger: BloggerData;
     revenueSeries30d: DailyRevenuePoint[];
 }

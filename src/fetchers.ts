@@ -249,7 +249,7 @@ async function fetchSitemapUrls(siteUrl: string, isFileBrik: boolean): Promise<s
 
 async function inspectSiteWithCache(
     env: Env,
-    siteKey: 'filebrik' | 'shiftandtip',
+    siteKey: 'filebrik' | 'shiftandtip' | 'spinpick',
     siteUrl: string,
     headers: Record<string, string>,
     now: Date,
@@ -317,7 +317,7 @@ async function inspectSiteWithCache(
 
 async function fetchGscSite(
     env: Env,
-    siteKey: 'filebrik' | 'shiftandtip',
+    siteKey: 'filebrik' | 'shiftandtip' | 'spinpick',
     siteUrl: string,
     accountEmail: string,
     refreshToken: string | undefined,
@@ -411,11 +411,16 @@ async function fetchGscSite(
     }
 }
 
-async function fetchCfAnalytics(env: Env, windows: DateWindows): Promise<CfAnalyticsData> {
-    if (!env.CF_ANALYTICS_TOKEN || !env.CF_ACCOUNT_ID || !env.CF_WEB_ANALYTICS_SITE_TAG) {
+async function fetchCfAnalytics(
+    env: Env,
+    windows: DateWindows,
+    siteTag: string | undefined = env.CF_WEB_ANALYTICS_SITE_TAG,
+    missingMsg = 'Set CF_ANALYTICS_TOKEN, CF_ACCOUNT_ID, CF_WEB_ANALYTICS_SITE_TAG',
+): Promise<CfAnalyticsData> {
+    if (!env.CF_ANALYTICS_TOKEN || !env.CF_ACCOUNT_ID || !siteTag) {
         return {
             status: 'pending',
-            error: 'Set CF_ANALYTICS_TOKEN, CF_ACCOUNT_ID, CF_WEB_ANALYTICS_SITE_TAG',
+            error: missingMsg,
             visitors: 0,
             pageviews: 0,
             topPages: [],
@@ -552,12 +557,14 @@ async function fetchBlogger(env: Env, now: Date): Promise<BloggerData> {
 
 export async function collectDashboardSnapshot(env: Env, now: Date = new Date()): Promise<DashboardSnapshot> {
     const windows = getDateWindows(now);
-    const [adsterra, clickadu, filebrikGsc, shiftGsc, cfAnalytics, blogger] = await Promise.all([
+    const [adsterra, clickadu, filebrikGsc, shiftGsc, spinpickGsc, cfAnalytics, cfAnalyticsSpinpick, blogger] = await Promise.all([
         fetchAdsterra(env, windows),
         fetchClickadu(env, windows),
         fetchGscSite(env, 'filebrik', 'https://filebrik.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows, now),
         fetchGscSite(env, 'shiftandtip', 'https://shiftandtip.blogspot.com/', 'rathore.monty2002@gmail.com', env.GSC_SHIFTANDTIP_REFRESH_TOKEN, windows, now),
+        fetchGscSite(env, 'spinpick', 'https://spinpick.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows, now),
         fetchCfAnalytics(env, windows),
+        fetchCfAnalytics(env, windows, env.CF_SPINPICK_SITE_TAG, 'Set CF_ANALYTICS_TOKEN, CF_ACCOUNT_ID, CF_SPINPICK_SITE_TAG'),
         fetchBlogger(env, now),
     ]);
 
@@ -568,8 +575,10 @@ export async function collectDashboardSnapshot(env: Env, now: Date = new Date())
         gsc: {
             filebrik: filebrikGsc,
             shiftandtip: shiftGsc,
+            spinpick: spinpickGsc,
         },
         cfAnalytics,
+        cfAnalyticsSpinpick,
         blogger,
         revenueSeries30d: build30DaySeries(adsterra.daily, clickadu.daily, now),
     };
