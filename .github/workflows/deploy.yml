@@ -73,6 +73,7 @@ jobs:
             fs.writeFileSync("wrangler.toml", toml, "utf8");
 
             let siteTag = "";
+            let spinpickSiteTag = "";
             try {
               const rumRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/rum/site_info/list?per_page=50`, { headers });
               const rumJson = await rumRes.json();
@@ -80,6 +81,8 @@ jobs:
               console.log("RUM API ok:", rumJson.success, "sites:", sites.length);
               const match = sites.find((s) => JSON.stringify(s).includes("filebrik.pages.dev")) || sites[0];
               if (match && match.site_tag) siteTag = match.site_tag;
+              const spMatch = sites.find((s) => JSON.stringify(s).includes("spinpick-app.pages.dev"));
+              if (spMatch && spMatch.site_tag) spinpickSiteTag = spMatch.site_tag;
             } catch {}
             if (!siteTag) {
               try {
@@ -87,6 +90,14 @@ jobs:
                 const pageHtml = await pageRes.text();
                 const m = pageHtml.match(/data-cf-beacon=['"][^'"]*"token"\s*:\s*"([a-f0-9]{32})"/i);
                 if (m) siteTag = m[1];
+              } catch {}
+            }
+            if (!spinpickSiteTag) {
+              try {
+                const spRes = await fetch("https://spinpick-app.pages.dev/");
+                const spHtml = await spRes.text();
+                const m = spHtml.match(/data-cf-beacon=['"][^'"]*"token"\s*:\s*"([a-f0-9]{32})"/i);
+                if (m) spinpickSiteTag = m[1];
               } catch {}
             }
 
@@ -101,8 +112,9 @@ jobs:
 
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `account_id=${accountId}\n`);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `site_tag=${siteTag}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `spinpick_site_tag=${spinpickSiteTag}\n`);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `worker_url=${subdomain ? `https://ad-dashboard.${subdomain}.workers.dev` : ""}\n`);
-            console.log("Resolved KV:", ns.id, "siteTag present:", Boolean(siteTag), "subdomain:", subdomain || "(unknown)");
+            console.log("Resolved KV:", ns.id, "siteTag present:", Boolean(siteTag), "spinpickSiteTag present:", Boolean(spinpickSiteTag), "subdomain:", subdomain || "(unknown)");
           })();
           EOF
 
@@ -122,13 +134,14 @@ jobs:
           CF_ANALYTICS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ steps.cf.outputs.account_id }}
           CF_WEB_ANALYTICS_SITE_TAG: ${{ steps.cf.outputs.site_tag || secrets.CF_WEB_ANALYTICS_SITE_TAG }}
+          CF_SPINPICK_SITE_TAG: ${{ steps.cf.outputs.spinpick_site_tag || secrets.CF_SPINPICK_SITE_TAG }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GSC_FILEBRIK_REFRESH_TOKEN: ${{ secrets.GSC_FILEBRIK_REFRESH_TOKEN }}
           GSC_SHIFTANDTIP_REFRESH_TOKEN: ${{ secrets.GSC_SHIFTANDTIP_REFRESH_TOKEN }}
           BLOGGER_REFRESH_TOKEN: ${{ secrets.BLOGGER_REFRESH_TOKEN }}
         run: |
-          for name in DASH_PASSWORD ADSTERRA_API_TOKEN CLICKADU_API_TOKEN CF_ANALYTICS_TOKEN CF_ACCOUNT_ID CF_WEB_ANALYTICS_SITE_TAG GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GSC_FILEBRIK_REFRESH_TOKEN GSC_SHIFTANDTIP_REFRESH_TOKEN BLOGGER_REFRESH_TOKEN; do
+          for name in DASH_PASSWORD ADSTERRA_API_TOKEN CLICKADU_API_TOKEN CF_ANALYTICS_TOKEN CF_ACCOUNT_ID CF_WEB_ANALYTICS_SITE_TAG CF_SPINPICK_SITE_TAG GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GSC_FILEBRIK_REFRESH_TOKEN GSC_SHIFTANDTIP_REFRESH_TOKEN BLOGGER_REFRESH_TOKEN; do
             val="${!name:-}"
             if [ -n "$val" ]; then
               printf '%s' "$val" | npx --yes wrangler@3 secret put "$name"
