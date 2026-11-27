@@ -562,7 +562,7 @@ export async function collectDashboardSnapshot(env: Env, now: Date = new Date())
         fetchClickadu(env, windows),
         fetchGscSite(env, 'filebrik', 'https://filebrik.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows, now),
         fetchGscSite(env, 'shiftandtip', 'https://shiftandtip.blogspot.com/', 'rathore.monty2002@gmail.com', env.GSC_SHIFTANDTIP_REFRESH_TOKEN, windows, now),
-        fetchGscSite(env, 'spinpick', 'https://spinpick.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows, now),
+        fetchGscSite(env, 'spinpick', 'https://spinpick-app.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows, now),
         fetchCfAnalytics(env, windows),
         fetchCfAnalytics(env, windows, env.CF_SPINPICK_SITE_TAG, 'Set CF_ANALYTICS_TOKEN, CF_ACCOUNT_ID, CF_SPINPICK_SITE_TAG'),
         fetchBlogger(env, now),

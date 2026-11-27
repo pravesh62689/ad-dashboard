@@ -314,7 +314,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
       <div class="table-wrap">
         <table><thead><tr><th>Country</th><th>Views</th><th>Visitors</th></tr></thead><tbody>${countryRows}</tbody></table>
       </div>
-      ${snapshot.cfAnalyticsSpinpick ? `<h4>SpinPick — spinpick.pages.dev (${statusBadge(snapshot.cfAnalyticsSpinpick.status)})</h4><div class="mini-grid"><div><span class="k">Visitors</span><span class="v">${fmtNum(snapshot.cfAnalyticsSpinpick.visitors)}</span></div><div><span class="k">Pageviews</span><span class="v">${fmtNum(snapshot.cfAnalyticsSpinpick.pageviews)}</span></div></div>` : ''}
+      ${snapshot.cfAnalyticsSpinpick ? `<h4>SpinPick — spinpick-app.pages.dev (${statusBadge(snapshot.cfAnalyticsSpinpick.status)})</h4><div class="mini-grid"><div><span class="k">Visitors</span><span class="v">${fmtNum(snapshot.cfAnalyticsSpinpick.visitors)}</span></div><div><span class="k">Pageviews</span><span class="v">${fmtNum(snapshot.cfAnalyticsSpinpick.pageviews)}</span></div></div>` : ''}
     </section>
 
     <section class="card">

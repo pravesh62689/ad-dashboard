@@ -30,7 +30,7 @@ export const ACCOUNTS_AND_PAYOUTS: AccountPayoutRow[] = [
         payoutMethodAndMin: 'PNB Bank Transfer (after AdSense approval, $100 min)',
     },
     {
-        site: 'spinpick.pages.dev',
+        site: 'spinpick-app.pages.dev',
         host: 'Cloudflare Pages',
         owningEmail: 'praveshrathore2002@gmail.com',
         adNetworks: 'Adsterra + Clickadu (Pending site approval)',
