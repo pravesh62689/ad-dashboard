@@ -146,13 +146,27 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
   const unitRows = snapshot.adsterra.units
     .map(
       (u) => `<tr>
-  <td>${esc(u.label)} (<code>${esc(u.placementId)}</code>)</td>
+  <td>${u.site ? `${esc(u.site)} · ` : ''}${esc(u.label)} (<code>${esc(u.placementId)}</code>)</td>
   <td>${fmtNum(u.today.impressions)} / ${fmtUsd(u.today.revenue)}</td>
   <td>${fmtNum(u.last7d.impressions)} / ${fmtUsd(u.last7d.revenue)}</td>
   <td>${fmtNum(u.month.impressions)} / ${fmtUsd(u.month.revenue)}</td>
 </tr>`,
     )
     .join('');
+
+  const siteSplitRows = snapshot.adsterra.bySite
+    ? (['FileBrik', 'SpinPick'] as const)
+        .map((siteName) => {
+          const s = snapshot.adsterra.bySite![siteName];
+          return `<tr>
+  <td><strong>${siteName}</strong></td>
+  <td>${fmtNum(s.today.impressions)} / ${fmtUsd(s.today.revenue)}</td>
+  <td>${fmtNum(s.last7d.impressions)} / ${fmtUsd(s.last7d.revenue)}</td>
+  <td>${fmtNum(s.month.impressions)} / ${fmtUsd(s.month.revenue)}</td>
+</tr>`;
+        })
+        .join('')
+    : '';
 
   const pagesRows =
     snapshot.cfAnalytics.topPages.length > 0
@@ -260,6 +274,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new
           </tbody>
         </table>
       </div>
+      ${siteSplitRows ? `<h4>By Site (Impr. / Revenue)</h4><div class="table-wrap"><table><thead><tr><th>Site</th><th>Today</th><th>7d</th><th>Month</th></tr></thead><tbody>${siteSplitRows}</tbody></table></div>` : ''}
       <h4>Per Unit (Impr. / Revenue)</h4>
       <div class="table-wrap">
         <table>

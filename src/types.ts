@@ -45,9 +45,16 @@ export interface DailyRevenuePoint {
 export interface AdsterraUnitData {
     placementId: string;
     label: string;
+    site?: 'FileBrik' | 'SpinPick';
     today: PeriodMetrics;
     last7d: PeriodMetrics;
     last30d?: PeriodMetrics;
+    month: PeriodMetrics;
+}
+
+export interface AdsterraSiteSplit {
+    today: PeriodMetrics;
+    last7d: PeriodMetrics;
     month: PeriodMetrics;
 }
 
@@ -59,6 +66,7 @@ export interface AdsterraData {
     last7d: PeriodMetrics;
     last30d?: PeriodMetrics;
     month: PeriodMetrics;
+    bySite?: Record<'FileBrik' | 'SpinPick', AdsterraSiteSplit>;
     units: AdsterraUnitData[];
     daily: Record<string, number>;
 }

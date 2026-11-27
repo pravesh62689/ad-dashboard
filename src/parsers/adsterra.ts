@@ -30,10 +30,15 @@ export function parseAdsterraStats(
     const daily: Record<string, number> = {};
 
     const unitMap = new Map<string, AdsterraUnitData>();
+    const bySite = {
+        FileBrik: { today: emptyMetrics(), last7d: emptyMetrics(), month: emptyMetrics() },
+        SpinPick: { today: emptyMetrics(), last7d: emptyMetrics(), month: emptyMetrics() },
+    };
     for (const u of ADSTERRA_UNITS) {
         unitMap.set(u.placementId, {
             placementId: u.placementId,
             label: u.label,
+            site: u.site,
             today: emptyMetrics(),
             last7d: emptyMetrics(),
             month: emptyMetrics(),
@@ -54,13 +59,16 @@ export function parseAdsterraStats(
         daily[date] = Number(((daily[date] ?? 0) + revenue).toFixed(6));
 
         const unit = unitMap.get(placementId);
+        const siteBucket = unit?.site ? bySite[unit.site] : null;
         if (date === windows.todayStr) {
             addRowToMetrics(today, impressions, clicks, revenue);
             if (unit) addRowToMetrics(unit.today, impressions, clicks, revenue);
+            if (siteBucket) addRowToMetrics(siteBucket.today, impressions, clicks, revenue);
         }
         if (date >= windows.weekStartStr && date <= windows.todayStr) {
             addRowToMetrics(last7d, impressions, clicks, revenue);
             if (unit) addRowToMetrics(unit.last7d, impressions, clicks, revenue);
+            if (siteBucket) addRowToMetrics(siteBucket.last7d, impressions, clicks, revenue);
         }
         if (date >= windows.thirtyDaysAgoStr && date <= windows.todayStr) {
             addRowToMetrics(last30d, impressions, clicks, revenue);
@@ -68,6 +76,7 @@ export function parseAdsterraStats(
         if (date >= windows.monthStartStr && date <= windows.todayStr) {
             addRowToMetrics(month, impressions, clicks, revenue);
             if (unit) addRowToMetrics(unit.month, impressions, clicks, revenue);
+            if (siteBucket) addRowToMetrics(siteBucket.month, impressions, clicks, revenue);
         }
     }
 
@@ -78,6 +87,7 @@ export function parseAdsterraStats(
         last7d,
         last30d,
         month,
+        bySite,
         units: ADSTERRA_UNITS.map((u) => unitMap.get(u.placementId)!),
         daily,
     };
