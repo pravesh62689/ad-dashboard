@@ -19,7 +19,7 @@ jobs:
       - run: npm ci
       - run: npm run verify
 
-      - name: Resolve Account ID and KV namespace
+      - name: Resolve Account ID, KV namespace, Web Analytics siteTag & workers.dev subdomain
         id: cf
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -44,6 +44,7 @@ jobs:
                 }
                 accountId = accJson.result[0].id;
               }
+
               const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`;
               const listRes = await fetch(`${base}?per_page=100`, { headers });
               const listJson = await listRes.json();
@@ -70,8 +71,29 @@ jobs:
                 ns.id
               );
               fs.writeFileSync("wrangler.toml", toml, "utf8");
+
+              let siteTag = "";
+              try {
+                const rumRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/rum/site_info/list?per_page=50`, { headers });
+                const rumJson = await rumRes.json();
+                const sites = Array.isArray(rumJson.result) ? rumJson.result : [];
+                const match = sites.find((s) => JSON.stringify(s).includes("filebrik.pages.dev")) || sites[0];
+                if (match && match.site_tag) siteTag = match.site_tag;
+              } catch {}
+
+              let subdomain = "";
+              try {
+                const subRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/subdomain`, { headers });
+                const subJson = await subRes.json();
+                if (subJson.success && subJson.result && subJson.result.subdomain) {
+                  subdomain = subJson.result.subdomain;
+                }
+              } catch {}
+
               fs.appendFileSync(process.env.GITHUB_OUTPUT, `account_id=${accountId}\n`);
-              console.log("Resolved account and KV namespace:", ns.id);
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, `site_tag=${siteTag}\n`);
+              fs.appendFileSync(process.env.GITHUB_OUTPUT, `worker_url=${subdomain ? `https://ad-dashboard.${subdomain}.workers.dev` : ""}\n`);
+              console.log("Resolved KV:", ns.id, "siteTag present:", Boolean(siteTag), "subdomain:", subdomain || "(unknown)");
             })();
           '
 
@@ -80,3 +102,27 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ steps.cf.outputs.account_id }}
+
+      - name: Sync Worker Secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.cf.outputs.account_id }}
+          DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
+          CF_ANALYTICS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ steps.cf.outputs.account_id }}
+          CF_WEB_ANALYTICS_SITE_TAG: ${{ steps.cf.outputs.site_tag || secrets.CF_WEB_ANALYTICS_SITE_TAG }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GSC_FILEBRIK_REFRESH_TOKEN: ${{ secrets.GSC_FILEBRIK_REFRESH_TOKEN }}
+          GSC_SHIFTANDTIP_REFRESH_TOKEN: ${{ secrets.GSC_SHIFTANDTIP_REFRESH_TOKEN }}
+          BLOGGER_REFRESH_TOKEN: ${{ secrets.BLOGGER_REFRESH_TOKEN }}
+        run: |
+          for name in DASH_PASSWORD CF_ANALYTICS_TOKEN CF_ACCOUNT_ID CF_WEB_ANALYTICS_SITE_TAG GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GSC_FILEBRIK_REFRESH_TOKEN GSC_SHIFTANDTIP_REFRESH_TOKEN BLOGGER_REFRESH_TOKEN; do
+            val="${!name:-}"
+            if [ -n "$val" ]; then
+              printf '%s' "$val" | npx --yes wrangler@3 secret put "$name"
+            else
+              echo "Skipping unset secret: $name"
+            fi
+          done
+          echo "LIVE_WORKER_URL=${{ steps.cf.outputs.worker_url }}"

@@ -19,7 +19,7 @@ async function fetchAdsterra(env: Env, windows: DateWindows): Promise<AdsterraDa
     if (!env.ADSTERRA_API_TOKEN) {
         return {
             status: 'pending',
-            error: 'Set ADSTERRA_API_TOKEN Worker secret',
+            error: 'Not connected',
             balance: null,
             today: emptyMetrics(),
             last7d: emptyMetrics(),

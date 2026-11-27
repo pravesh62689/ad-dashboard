@@ -20,9 +20,9 @@ function fmtNum(n: number | null | undefined): string {
     return Math.round(n).toLocaleString('en-US');
 }
 
-function statusBadge(status: string): string {
+function statusBadge(status: string, pendingLabel = 'Pending'): string {
     if (status === 'ok') return '<span class="badge ok">Live</span>';
-    if (status === 'pending') return '<span class="badge pending">Pending</span>';
+    if (status === 'pending') return `<span class="badge pending">${esc(pendingLabel)}</span>`;
     if (status === 'expired') return '<span class="badge err">Token expired</span>';
     return '<span class="badge err">Error</span>';
 }
@@ -232,7 +232,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot): string {
     <section class="card">
       <div class="card-head">
         <h3>Adsterra Publisher</h3>
-        ${statusBadge(snapshot.adsterra.status)}
+        ${statusBadge(snapshot.adsterra.status, 'Not connected')}
       </div>
       <p class="muted">Balance: <strong>${fmtUsd(snapshot.adsterra.balance)}</strong>${snapshot.adsterra.error ? ` · ${esc(snapshot.adsterra.error)}` : ''}</p>
       <div class="table-wrap">
