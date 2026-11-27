@@ -104,15 +104,20 @@ describe('Dashboard HTML renderer', () => {
             revenueSeries30d: build30DaySeries({ '2026-11-27': 1.2 }, {}, new Date('2026-11-27T04:00:00.000Z')),
         };
 
-        const html = renderDashboardHtml(snapshot);
+        const html = renderDashboardHtml(snapshot, new Date('2026-11-27T04:30:00.000Z'));
         expect(html).toContain('<svg viewBox="0 0 720 210"');
         expect(html).toContain('token expired');
         expect(html).toContain('npm run reauth');
+        expect(html).not.toContain('Stale data');
         expect(html).toContain('Pending');
         expect(html).toContain('32499187');
         expect(html).toContain('praveshrathore2002@gmail.com');
         expect(html).toContain('rathore.monty2002@gmail.com');
         expect(html).toContain('PNB Bank Transfer');
+        expect(html).toContain('Substantial posts toward AdSense');
         expect(html).toContain('0/20');
+
+        const staleHtml = renderDashboardHtml(snapshot, new Date('2026-11-27T07:00:00.000Z'));
+        expect(staleHtml).toContain('Stale data');
     });
 });

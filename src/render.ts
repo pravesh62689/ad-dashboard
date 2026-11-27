@@ -2,73 +2,73 @@ import { ACCOUNTS_AND_PAYOUTS } from './staticData.js';
 import type { DailyRevenuePoint, DashboardSnapshot, GscSiteData, PeriodMetrics } from './types.js';
 
 function esc(value: unknown): string {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function fmtUsd(n: number | null | undefined): string {
-    if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-    return `$${n.toFixed(2)}`;
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  return `$${n.toFixed(2)}`;
 }
 
 function fmtNum(n: number | null | undefined): string {
-    if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-    return Math.round(n).toLocaleString('en-US');
+  if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  return Math.round(n).toLocaleString('en-US');
 }
 
 function statusBadge(status: string, pendingLabel = 'Pending'): string {
-    if (status === 'ok') return '<span class="badge ok">Live</span>';
-    if (status === 'pending') return `<span class="badge pending">${esc(pendingLabel)}</span>`;
-    if (status === 'expired') return '<span class="badge err">Token expired</span>';
-    return '<span class="badge err">Error</span>';
+  if (status === 'ok') return '<span class="badge ok">Live</span>';
+  if (status === 'pending') return `<span class="badge pending">${esc(pendingLabel)}</span>`;
+  if (status === 'expired') return '<span class="badge err">Token expired</span>';
+  return '<span class="badge err">Error</span>';
 }
 
 export function renderRevenueChartSvg(series: DailyRevenuePoint[]): string {
-    const w = 720;
-    const h = 210;
-    const padL = 44;
-    const padR = 16;
-    const padT = 16;
-    const padB = 28;
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
+  const w = 720;
+  const h = 210;
+  const padL = 44;
+  const padR = 16;
+  const padT = 16;
+  const padB = 28;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
 
-    const maxVal = Math.max(1, ...series.map((p) => p.total));
-    const stepX = series.length > 1 ? plotW / (series.length - 1) : plotW;
+  const maxVal = Math.max(1, ...series.map((p) => p.total));
+  const stepX = series.length > 1 ? plotW / (series.length - 1) : plotW;
 
-    const coords = series.map((p, idx) => {
-        const x = padL + idx * stepX;
-        const y = padT + plotH - (p.total / maxVal) * plotH;
-        return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)), point: p };
-    });
+  const coords = series.map((p, idx) => {
+    const x = padL + idx * stepX;
+    const y = padT + plotH - (p.total / maxVal) * plotH;
+    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)), point: p };
+  });
 
-    const polyline = coords.map((c) => `${c.x},${c.y}`).join(' ');
-    const area =
-        coords.length > 0
-            ? `M ${padL},${padT + plotH} L ${coords.map((c) => `${c.x},${c.y}`).join(' L ')} L ${coords[coords.length - 1].x},${padT + plotH} Z`
-            : '';
+  const polyline = coords.map((c) => `${c.x},${c.y}`).join(' ');
+  const area =
+    coords.length > 0
+      ? `M ${padL},${padT + plotH} L ${coords.map((c) => `${c.x},${c.y}`).join(' L ')} L ${coords[coords.length - 1].x},${padT + plotH} Z`
+      : '';
 
-    const gridLines = [0, 0.5, 1].map((frac) => {
-        const y = Number((padT + plotH - frac * plotH).toFixed(1));
-        const label = `$${(maxVal * frac).toFixed(2)}`;
-        return `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="#e2e8f0" stroke-dasharray="3 3" />
+  const gridLines = [0, 0.5, 1].map((frac) => {
+    const y = Number((padT + plotH - frac * plotH).toFixed(1));
+    const label = `$${(maxVal * frac).toFixed(2)}`;
+    return `<line x1="${padL}" y1="${y}" x2="${w - padR}" y2="${y}" stroke="#e2e8f0" stroke-dasharray="3 3" />
 <text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="#64748b">${esc(label)}</text>`;
-    });
+  });
 
-    const dots = coords.map(
-        (c) =>
-            `<circle cx="${c.x}" cy="${c.y}" r="3" fill="#0f766e"><title>${esc(c.point.date)}: ${fmtUsd(c.point.total)} (Adsterra ${fmtUsd(c.point.adsterra)}, Clickadu ${fmtUsd(c.point.clickadu)})</title></circle>`,
-    );
+  const dots = coords.map(
+    (c) =>
+      `<circle cx="${c.x}" cy="${c.y}" r="3" fill="#0f766e"><title>${esc(c.point.date)}: ${fmtUsd(c.point.total)} (Adsterra ${fmtUsd(c.point.adsterra)}, Clickadu ${fmtUsd(c.point.clickadu)})</title></circle>`,
+  );
 
-    const firstDate = series[0]?.date ?? '';
-    const midDate = series[Math.floor(series.length / 2)]?.date ?? '';
-    const lastDate = series[series.length - 1]?.date ?? '';
+  const firstDate = series[0]?.date ?? '';
+  const midDate = series[Math.floor(series.length / 2)]?.date ?? '';
+  const lastDate = series[series.length - 1]?.date ?? '';
 
-    return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="210" role="img" aria-label="30-day revenue line chart">
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="210" role="img" aria-label="30-day revenue line chart">
   ${gridLines.join('\n  ')}
   ${area ? `<path d="${area}" fill="#0f766e" fill-opacity="0.10" />` : ''}
   ${polyline ? `<polyline fill="none" stroke="#0f766e" stroke-width="2.2" points="${polyline}" />` : ''}
@@ -80,7 +80,7 @@ export function renderRevenueChartSvg(series: DailyRevenuePoint[]): string {
 }
 
 function renderPeriodRow(label: string, m: PeriodMetrics): string {
-    return `<tr>
+  return `<tr>
   <td>${esc(label)}</td>
   <td>${fmtNum(m.impressions)}</td>
   <td>${fmtNum(m.clicks)}</td>
@@ -90,17 +90,17 @@ function renderPeriodRow(label: string, m: PeriodMetrics): string {
 }
 
 function renderGscCard(title: string, gsc: GscSiteData): string {
-    const queriesRows =
-        gsc.topQueries.length > 0
-            ? gsc.topQueries
-                  .map(
-                      (q) =>
-                          `<tr><td>${esc(q.query)}</td><td>${fmtNum(q.clicks)}</td><td>${fmtNum(q.impressions)}</td><td>${q.ctr}%</td><td>${q.position}</td></tr>`,
-                  )
-                  .join('')
-            : '<tr><td colspan="5" class="muted">No query data yet</td></tr>';
+  const queriesRows =
+    gsc.topQueries.length > 0
+      ? gsc.topQueries
+        .map(
+          (q) =>
+            `<tr><td>${esc(q.query)}</td><td>${fmtNum(q.clicks)}</td><td>${fmtNum(q.impressions)}</td><td>${q.ctr}%</td><td>${q.position}</td></tr>`,
+        )
+        .join('')
+      : '<tr><td colspan="5" class="muted">No query data yet</td></tr>';
 
-    return `<section class="card">
+  return `<section class="card">
   <div class="card-head">
     <h3>GSC — ${esc(title)}</h3>
     ${statusBadge(gsc.status)}
@@ -123,49 +123,58 @@ function renderGscCard(title: string, gsc: GscSiteData): string {
 </section>`;
 }
 
-export function renderDashboardHtml(snapshot: DashboardSnapshot): string {
-    const anyExpired = snapshot.gsc.filebrik.tokenExpired || snapshot.gsc.shiftandtip.tokenExpired || snapshot.blogger.tokenExpired;
+const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
-    const totalToday = snapshot.adsterra.today.revenue + snapshot.clickadu.today.revenue;
-    const total7d = snapshot.adsterra.last7d.revenue + snapshot.clickadu.last7d.revenue;
-    const totalMonth = snapshot.adsterra.month.revenue + snapshot.clickadu.month.revenue;
+export function isSnapshotStale(updatedAt: string, now: Date = new Date()): boolean {
+  const ts = Date.parse(updatedAt);
+  if (!Number.isFinite(ts)) return true;
+  return now.getTime() - ts > STALE_THRESHOLD_MS;
+}
 
-    const unitRows = snapshot.adsterra.units
-        .map(
-            (u) => `<tr>
+export function renderDashboardHtml(snapshot: DashboardSnapshot, now: Date = new Date()): string {
+  const anyExpired = snapshot.gsc.filebrik.tokenExpired || snapshot.gsc.shiftandtip.tokenExpired || snapshot.blogger.tokenExpired;
+  const isStale = isSnapshotStale(snapshot.updatedAt, now);
+
+  const totalToday = snapshot.adsterra.today.revenue + snapshot.clickadu.today.revenue;
+  const total7d = snapshot.adsterra.last7d.revenue + snapshot.clickadu.last7d.revenue;
+  const totalMonth = snapshot.adsterra.month.revenue + snapshot.clickadu.month.revenue;
+
+  const unitRows = snapshot.adsterra.units
+    .map(
+      (u) => `<tr>
   <td>${esc(u.label)} (<code>${esc(u.placementId)}</code>)</td>
   <td>${fmtNum(u.today.impressions)} / ${fmtUsd(u.today.revenue)}</td>
   <td>${fmtNum(u.last7d.impressions)} / ${fmtUsd(u.last7d.revenue)}</td>
   <td>${fmtNum(u.month.impressions)} / ${fmtUsd(u.month.revenue)}</td>
 </tr>`,
-        )
-        .join('');
+    )
+    .join('');
 
-    const pagesRows =
-        snapshot.cfAnalytics.topPages.length > 0
-            ? snapshot.cfAnalytics.topPages
-                  .map((p) => `<tr><td>${esc(p.path)}</td><td>${fmtNum(p.views)}</td><td>${fmtNum(p.visitors)}</td></tr>`)
-                  .join('')
-            : '<tr><td colspan="3" class="muted">No pageviews yet</td></tr>';
+  const pagesRows =
+    snapshot.cfAnalytics.topPages.length > 0
+      ? snapshot.cfAnalytics.topPages
+        .map((p) => `<tr><td>${esc(p.path)}</td><td>${fmtNum(p.views)}</td><td>${fmtNum(p.visitors)}</td></tr>`)
+        .join('')
+      : '<tr><td colspan="3" class="muted">No pageviews yet</td></tr>';
 
-    const countryRows =
-        snapshot.cfAnalytics.topCountries.length > 0
-            ? snapshot.cfAnalytics.topCountries
-                  .map((c) => `<tr><td>${esc(c.country)}</td><td>${fmtNum(c.views)}</td><td>${fmtNum(c.visitors)}</td></tr>`)
-                  .join('')
-            : '<tr><td colspan="3" class="muted">No country data yet</td></tr>';
+  const countryRows =
+    snapshot.cfAnalytics.topCountries.length > 0
+      ? snapshot.cfAnalytics.topCountries
+        .map((c) => `<tr><td>${esc(c.country)}</td><td>${fmtNum(c.views)}</td><td>${fmtNum(c.visitors)}</td></tr>`)
+        .join('')
+      : '<tr><td colspan="3" class="muted">No country data yet</td></tr>';
 
-    const accountRows = ACCOUNTS_AND_PAYOUTS.map(
-        (a) => `<tr>
+  const accountRows = ACCOUNTS_AND_PAYOUTS.map(
+    (a) => `<tr>
   <td><strong>${esc(a.site)}</strong></td>
   <td>${esc(a.host)}</td>
   <td>${esc(a.owningEmail)}</td>
   <td>${esc(a.adNetworks)}</td>
   <td>${esc(a.payoutMethodAndMin)}</td>
 </tr>`,
-    ).join('');
+  ).join('');
 
-    return `<!doctype html>
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -210,6 +219,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot): string {
   </header>
 
   ${anyExpired ? '<div class="banner">token expired → run <code>npm run reauth</code></div>' : ''}
+  ${isStale ? '<div class="banner">Stale data — last updated over 2 hours ago</div>' : ''}
 
   <div class="kpi-grid">
     <div class="card kpi"><span class="k">Revenue Today</span><span class="v">${fmtUsd(totalToday)}</span></div>
@@ -217,7 +227,7 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot): string {
     <div class="card kpi"><span class="k">Revenue (Month)</span><span class="v">${fmtUsd(totalMonth)}</span></div>
     <div class="card kpi"><span class="k">Adsterra Balance</span><span class="v">${fmtUsd(snapshot.adsterra.balance)}</span></div>
     <div class="card kpi"><span class="k">FileBrik Visitors (30d)</span><span class="v">${fmtNum(snapshot.cfAnalytics.visitors)}</span></div>
-    <div class="card kpi"><span class="k">AdSense Gate</span><span class="v">${snapshot.blogger.adsenseSubstantial}/${snapshot.blogger.adsenseTarget}</span></div>
+    <div class="card kpi"><span class="k">Substantial posts toward AdSense</span><span class="v">${snapshot.blogger.adsenseSubstantial}/${snapshot.blogger.adsenseTarget}</span></div>
   </div>
 
   <section class="card">
@@ -309,9 +319,9 @@ export function renderDashboardHtml(snapshot: DashboardSnapshot): string {
         <div><span class="k">Live Posts</span><span class="v">${fmtNum(snapshot.blogger.livePosts)}</span></div>
         <div><span class="k">Scheduled</span><span class="v">${fmtNum(snapshot.blogger.scheduledPosts)}</span></div>
         <div><span class="k">Next Publish</span><span class="v">${esc(snapshot.blogger.nextPublishDate ? snapshot.blogger.nextPublishDate.slice(0, 10) : '—')}</span></div>
-        <div><span class="k">AdSense Gate</span><span class="v">${snapshot.blogger.adsenseSubstantial}/${snapshot.blogger.adsenseTarget}</span></div>
+        <div><span class="k">Substantial posts toward AdSense</span><span class="v">${snapshot.blogger.adsenseSubstantial}/${snapshot.blogger.adsenseTarget}</span></div>
       </div>
-      <p class="muted">AdSense status: <strong>${snapshot.blogger.adsenseReady ? 'READY TO APPLY' : `Waiting (${snapshot.blogger.adsenseSubstantial}/${snapshot.blogger.adsenseTarget} substantial posts >=600w live >=7d)`}</strong></p>
+      <p class="muted">AdSense gate: <strong>${snapshot.blogger.adsenseReady ? 'READY TO APPLY' : `Waiting (${snapshot.blogger.adsenseSubstantial}/${snapshot.blogger.adsenseTarget} substantial posts >=600w live >=7d; ${fmtNum(snapshot.blogger.livePosts)} live total)`}</strong></p>
     </section>
   </div>
 

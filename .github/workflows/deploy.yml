@@ -77,9 +77,18 @@ jobs:
                 const rumRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/rum/site_info/list?per_page=50`, { headers });
                 const rumJson = await rumRes.json();
                 const sites = Array.isArray(rumJson.result) ? rumJson.result : [];
+                console.log("RUM API ok:", rumJson.success, "sites:", sites.length);
                 const match = sites.find((s) => JSON.stringify(s).includes("filebrik.pages.dev")) || sites[0];
                 if (match && match.site_tag) siteTag = match.site_tag;
               } catch {}
+              if (!siteTag) {
+                try {
+                  const pageRes = await fetch("https://filebrik.pages.dev/");
+                  const pageHtml = await pageRes.text();
+                  const m = pageHtml.match(/data-cf-beacon=['"]\{[^}]*"token"\s*:\s*"([a-f0-9]{32})"/i);
+                  if (m) siteTag = m[1];
+                } catch {}
+              }
 
               let subdomain = "";
               try {

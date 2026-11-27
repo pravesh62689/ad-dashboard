@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -29,7 +30,7 @@ function loadClientConfig() {
     throw new Error('Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET or provide secrets/client_secret.json');
 }
 
-async function authorizeOne({ label, secretName, scopes, port, clientId, clientSecret }) {
+async function authorizeOne({ label, secretNames, scopes, port, clientId, clientSecret }) {
     const server = http.createServer();
     await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
     const redirectUri = `http://127.0.0.1:${port}/oauth2callback`;
@@ -77,9 +78,17 @@ async function authorizeOne({ label, secretName, scopes, port, clientId, clientS
         throw new Error(`No refresh_token returned for ${label}: ${JSON.stringify(tokenJson)}`);
     }
 
-    console.log(`[${label}] Success! Update Worker secret ${secretName} via:`);
-    console.log(`  npx wrangler secret put ${secretName}`);
-    console.log('(Paste the refresh token directly into the wrangler prompt — never commit it.)');
+    for (const secretName of Array.isArray(secretNames) ? secretNames : [secretNames]) {
+        try {
+            execFileSync('gh', ['secret', 'set', secretName, '-R', 'pravesh62689/ad-dashboard'], {
+                input: tokenJson.refresh_token,
+                stdio: ['pipe', 'ignore', 'pipe'],
+            });
+            console.log(`[${label}] Updated GitHub secret ${secretName}`);
+        } catch {
+            console.log(`[${label}] Run manually: npx wrangler secret put ${secretName}`);
+        }
+    }
 }
 
 async function main() {
@@ -88,7 +97,7 @@ async function main() {
     await rl.question('Press Enter to authorize FileBrik GSC (praveshrathore2002@gmail.com)... ');
     await authorizeOne({
         label: 'FileBrik GSC',
-        secretName: 'GSC_FILEBRIK_REFRESH_TOKEN',
+        secretNames: ['GSC_FILEBRIK_REFRESH_TOKEN'],
         scopes: ['https://www.googleapis.com/auth/webmasters.readonly'],
         port: 48122,
         clientId,
@@ -98,7 +107,7 @@ async function main() {
     await rl.question('Press Enter to authorize Shift & Tip GSC + Blogger (rathore.monty2002@gmail.com)... ');
     await authorizeOne({
         label: 'Shift & Tip GSC + Blogger',
-        secretName: 'GSC_SHIFTANDTIP_REFRESH_TOKEN / BLOGGER_REFRESH_TOKEN',
+        secretNames: ['GSC_SHIFTANDTIP_REFRESH_TOKEN', 'BLOGGER_REFRESH_TOKEN'],
         scopes: [
             'https://www.googleapis.com/auth/webmasters.readonly',
             'https://www.googleapis.com/auth/blogger.readonly',
@@ -108,6 +117,7 @@ async function main() {
         clientSecret,
     });
     rl.close();
+    console.log('\nDone! Trigger Deploy Worker in GitHub Actions to sync the new secrets to Cloudflare.');
 }
 
 main().catch((err) => {
