@@ -15,6 +15,7 @@ export const ADSTERRA_UNITS = [
     { placementId: '32523689', label: '320x50', site: 'SpinPick' as const },
     { placementId: '32523690', label: '300x250', site: 'SpinPick' as const },
     { placementId: '32523691', label: '728x90', site: 'SpinPick' as const },
+    { placementId: '32524335', label: 'Social Bar', site: 'SpinPick' as const },
 ] as const;
 
 export const SHIFTANDTIP_BLOG_ID = '4523693247154244983';
@@ -38,7 +39,7 @@ export const ACCOUNTS_AND_PAYOUTS: AccountPayoutRow[] = [
         site: 'spinpick-app.pages.dev',
         host: 'Cloudflare Pages',
         owningEmail: 'praveshrathore2002@gmail.com',
-        adNetworks: 'Adsterra (Site 6234377: Popunder 32523687, Native 32523688, 320x50, 300x250, 728x90); Clickadu (Pending)',
+        adNetworks: 'Adsterra (Site 6234377: Popunder 32523687, Native 32523688, 320x50, 300x250, 728x90, Social Bar 32524335); Clickadu (Pending)',
         payoutMethodAndMin: 'Adsterra: PayPal ($25 min); Clickadu: after KYC',
     },
 ];
