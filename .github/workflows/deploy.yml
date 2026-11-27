@@ -25,86 +25,86 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          node -e '
-            const fs = require("node:fs");
-            const token = process.env.CLOUDFLARE_API_TOKEN;
-            if (!token) {
-              console.error("Missing CLOUDFLARE_API_TOKEN secret.");
-              process.exit(1);
-            }
-            const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-            (async () => {
-              let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-              if (!accountId) {
-                const accRes = await fetch("https://api.cloudflare.com/client/v4/accounts?per_page=10", { headers });
-                const accJson = await accRes.json();
-                if (!accJson.success || !Array.isArray(accJson.result) || accJson.result.length === 0) {
-                  console.error("Failed to resolve Cloudflare account ID:", accJson.errors);
-                  process.exit(1);
-                }
-                accountId = accJson.result[0].id;
-              }
-
-              const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`;
-              const listRes = await fetch(`${base}?per_page=100`, { headers });
-              const listJson = await listRes.json();
-              if (!listJson.success) {
-                console.error("Failed to list KV namespaces:", listJson.errors);
+          node <<'EOF'
+          const fs = require("node:fs");
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          if (!token) {
+            console.error("Missing CLOUDFLARE_API_TOKEN secret.");
+            process.exit(1);
+          }
+          const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+          (async () => {
+            let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+            if (!accountId) {
+              const accRes = await fetch("https://api.cloudflare.com/client/v4/accounts?per_page=10", { headers });
+              const accJson = await accRes.json();
+              if (!accJson.success || !Array.isArray(accJson.result) || accJson.result.length === 0) {
+                console.error("Failed to resolve Cloudflare account ID:", accJson.errors);
                 process.exit(1);
               }
-              let ns = (listJson.result || []).find((n) => n.title === "ad-dashboard-kv");
-              if (!ns) {
-                const createRes = await fetch(base, {
-                  method: "POST",
-                  headers,
-                  body: JSON.stringify({ title: "ad-dashboard-kv" }),
-                });
-                const createJson = await createRes.json();
-                if (!createJson.success) {
-                  console.error("Failed to create KV namespace:", createJson.errors);
-                  process.exit(1);
-                }
-                ns = createJson.result;
+              accountId = accJson.result[0].id;
+            }
+
+            const base = `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`;
+            const listRes = await fetch(`${base}?per_page=100`, { headers });
+            const listJson = await listRes.json();
+            if (!listJson.success) {
+              console.error("Failed to list KV namespaces:", listJson.errors);
+              process.exit(1);
+            }
+            let ns = (listJson.result || []).find((n) => n.title === "ad-dashboard-kv");
+            if (!ns) {
+              const createRes = await fetch(base, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ title: "ad-dashboard-kv" }),
+              });
+              const createJson = await createRes.json();
+              if (!createJson.success) {
+                console.error("Failed to create KV namespace:", createJson.errors);
+                process.exit(1);
               }
-              const toml = fs.readFileSync("wrangler.toml", "utf8").replace(
-                "REPLACE_WITH_KV_NAMESPACE_ID",
-                ns.id
-              );
-              fs.writeFileSync("wrangler.toml", toml, "utf8");
+              ns = createJson.result;
+            }
+            const toml = fs.readFileSync("wrangler.toml", "utf8").replace(
+              "REPLACE_WITH_KV_NAMESPACE_ID",
+              ns.id
+            );
+            fs.writeFileSync("wrangler.toml", toml, "utf8");
 
-              let siteTag = "";
+            let siteTag = "";
+            try {
+              const rumRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/rum/site_info/list?per_page=50`, { headers });
+              const rumJson = await rumRes.json();
+              const sites = Array.isArray(rumJson.result) ? rumJson.result : [];
+              console.log("RUM API ok:", rumJson.success, "sites:", sites.length);
+              const match = sites.find((s) => JSON.stringify(s).includes("filebrik.pages.dev")) || sites[0];
+              if (match && match.site_tag) siteTag = match.site_tag;
+            } catch {}
+            if (!siteTag) {
               try {
-                const rumRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/rum/site_info/list?per_page=50`, { headers });
-                const rumJson = await rumRes.json();
-                const sites = Array.isArray(rumJson.result) ? rumJson.result : [];
-                console.log("RUM API ok:", rumJson.success, "sites:", sites.length);
-                const match = sites.find((s) => JSON.stringify(s).includes("filebrik.pages.dev")) || sites[0];
-                if (match && match.site_tag) siteTag = match.site_tag;
+                const pageRes = await fetch("https://filebrik.pages.dev/");
+                const pageHtml = await pageRes.text();
+                const m = pageHtml.match(/data-cf-beacon=['"][^'"]*"token"\s*:\s*"([a-f0-9]{32})"/i);
+                if (m) siteTag = m[1];
               } catch {}
-              if (!siteTag) {
-                try {
-                  const pageRes = await fetch("https://filebrik.pages.dev/");
-                  const pageHtml = await pageRes.text();
-                  const m = pageHtml.match(/data-cf-beacon=['"]\{[^}]*"token"\s*:\s*"([a-f0-9]{32})"/i);
-                  if (m) siteTag = m[1];
-                } catch {}
+            }
+
+            let subdomain = "";
+            try {
+              const subRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/subdomain`, { headers });
+              const subJson = await subRes.json();
+              if (subJson.success && subJson.result && subJson.result.subdomain) {
+                subdomain = subJson.result.subdomain;
               }
+            } catch {}
 
-              let subdomain = "";
-              try {
-                const subRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/subdomain`, { headers });
-                const subJson = await subRes.json();
-                if (subJson.success && subJson.result && subJson.result.subdomain) {
-                  subdomain = subJson.result.subdomain;
-                }
-              } catch {}
-
-              fs.appendFileSync(process.env.GITHUB_OUTPUT, `account_id=${accountId}\n`);
-              fs.appendFileSync(process.env.GITHUB_OUTPUT, `site_tag=${siteTag}\n`);
-              fs.appendFileSync(process.env.GITHUB_OUTPUT, `worker_url=${subdomain ? `https://ad-dashboard.${subdomain}.workers.dev` : ""}\n`);
-              console.log("Resolved KV:", ns.id, "siteTag present:", Boolean(siteTag), "subdomain:", subdomain || "(unknown)");
-            })();
-          '
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `account_id=${accountId}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `site_tag=${siteTag}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `worker_url=${subdomain ? `https://ad-dashboard.${subdomain}.workers.dev` : ""}\n`);
+            console.log("Resolved KV:", ns.id, "siteTag present:", Boolean(siteTag), "subdomain:", subdomain || "(unknown)");
+          })();
+          EOF
 
       - name: Deploy with Wrangler Action
         uses: cloudflare/wrangler-action@v3
