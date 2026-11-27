@@ -64,6 +64,8 @@ describe('Dashboard HTML renderer', () => {
                     siteUrl: 'https://filebrik.pages.dev/',
                     accountEmail: 'praveshrathore2002@gmail.com',
                     indexed: 5,
+                    inspectTotal: 56,
+                    inspectCheckedAt: '2026-11-27T18:00:00.000Z',
                     discovered: 56,
                     notIndexed: 51,
                     clicks: 12,
@@ -116,6 +118,8 @@ describe('Dashboard HTML renderer', () => {
         expect(html).toContain('rathore.monty2002@gmail.com');
         expect(html).toContain('PNB Bank Transfer');
         expect(html).toContain('Substantial posts toward AdSense');
+        expect(html).toContain('Indexed (checked 2026-11-27)');
+        expect(html).toContain('5/56');
         expect(html).toContain('0/20');
 
         const staleHtml = renderDashboardHtml(snapshot, new Date('2026-11-27T07:00:00.000Z'));

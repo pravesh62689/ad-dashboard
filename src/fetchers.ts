@@ -2,7 +2,14 @@ import { parseAdsterraBalance, parseAdsterraStats } from './parsers/adsterra.js'
 import { parseBloggerStatus } from './parsers/blogger.js';
 import { parseCfWebAnalytics } from './parsers/cfAnalytics.js';
 import { parseClickaduStats } from './parsers/clickadu.js';
-import { isTokenExpiredError, parseGscAnalytics, parseGscSitemaps } from './parsers/gsc.js';
+import {
+    extractSitemapChildUrls,
+    extractSitemapPageUrls,
+    isTokenExpiredError,
+    isUrlIndexed,
+    parseGscAnalytics,
+    parseGscSitemaps,
+} from './parsers/gsc.js';
 import { build30DaySeries, emptyMetrics, getDateWindows, type DateWindows } from './parsers/utils.js';
 import { ADSTERRA_UNITS, SHIFTANDTIP_BLOG_ID } from './staticData.js';
 import type {
@@ -190,12 +197,132 @@ async function refreshGoogleAccessToken(
     };
 }
 
+const MAX_INSPECT_PER_SITE = 60;
+const INSPECT_BATCH_SIZE = 15;
+const INSPECT_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface GscInspectCache {
+    urls: string[];
+    cursor: number;
+    indexedCount: number;
+    checkedCount: number;
+    totalCount: number;
+    checkedAt: string;
+    completedAt: string | null;
+}
+
+async function fetchSitemapUrls(siteUrl: string, isFileBrik: boolean): Promise<string[]> {
+    const base = siteUrl.replace(/\/$/, '');
+    const found = new Set<string>();
+
+    async function walk(smUrl: string, depth = 0): Promise<void> {
+        if (depth > 3 || found.size >= MAX_INSPECT_PER_SITE) return;
+        try {
+            const res = await fetch(smUrl);
+            if (!res.ok) return;
+            const xml = await res.text();
+            const children = extractSitemapChildUrls(xml);
+            if (children.length > 0) {
+                for (const c of children) {
+                    await walk(c, depth + 1);
+                    if (found.size >= MAX_INSPECT_PER_SITE) break;
+                }
+            } else {
+                for (const u of extractSitemapPageUrls(xml)) {
+                    found.add(u);
+                    if (found.size >= MAX_INSPECT_PER_SITE) break;
+                }
+            }
+        } catch {
+            // ignore sitemap fetch errors
+        }
+    }
+
+    if (isFileBrik) {
+        await walk(`${base}/sitemap-index.xml`);
+    } else {
+        await walk(`${base}/sitemap.xml`);
+        await walk(`${base}/sitemap-pages.xml`);
+    }
+    return [...found].slice(0, MAX_INSPECT_PER_SITE);
+}
+
+async function inspectSiteWithCache(
+    env: Env,
+    siteKey: 'filebrik' | 'shiftandtip',
+    siteUrl: string,
+    headers: Record<string, string>,
+    now: Date,
+): Promise<GscInspectCache> {
+    const cacheKey = `gsc-inspect:v1:${siteKey}`;
+    let cache: GscInspectCache | null = null;
+    try {
+        const raw = await env.DASHBOARD_KV.get(cacheKey);
+        if (raw) cache = JSON.parse(raw) as GscInspectCache;
+    } catch {
+        cache = null;
+    }
+
+    if (cache?.completedAt) {
+        const ageMs = now.getTime() - Date.parse(cache.completedAt);
+        if (Number.isFinite(ageMs) && ageMs < INSPECT_TTL_MS) {
+            return cache;
+        }
+    }
+
+    if (!cache || cache.completedAt) {
+        const urls = await fetchSitemapUrls(siteUrl, siteKey === 'filebrik');
+        cache = {
+            urls,
+            cursor: 0,
+            indexedCount: 0,
+            checkedCount: 0,
+            totalCount: urls.length,
+            checkedAt: now.toISOString(),
+            completedAt: urls.length === 0 ? now.toISOString() : null,
+        };
+    }
+
+    const end = Math.min(cache.urls.length, cache.cursor + INSPECT_BATCH_SIZE);
+    for (let i = cache.cursor; i < end; i++) {
+        try {
+            const res = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    inspectionUrl: cache.urls[i],
+                    siteUrl,
+                    languageCode: 'en-US',
+                }),
+            });
+            if (res.ok) {
+                const payload = await res.json();
+                if (isUrlIndexed(payload)) cache.indexedCount += 1;
+                cache.checkedCount += 1;
+            }
+        } catch {
+            // continue on transient inspection error
+        }
+        cache.cursor = i + 1;
+    }
+
+    cache.checkedAt = now.toISOString();
+    if (cache.cursor >= cache.urls.length) {
+        cache.completedAt = cache.checkedAt;
+    }
+
+    await env.DASHBOARD_KV.put(cacheKey, JSON.stringify(cache));
+    return cache;
+}
+
 async function fetchGscSite(
     env: Env,
+    siteKey: 'filebrik' | 'shiftandtip',
     siteUrl: string,
     accountEmail: string,
     refreshToken: string | undefined,
     windows: DateWindows,
+    now: Date,
 ): Promise<GscSiteData> {
     const empty: GscSiteData = {
         status: 'pending',
@@ -232,7 +359,7 @@ async function fetchGscSite(
         };
         const encodedSite = encodeURIComponent(siteUrl);
 
-        const [analyticsRes, sitemapsRes] = await Promise.all([
+        const [analyticsRes, sitemapsRes, inspectCache] = await Promise.all([
             fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/searchAnalytics/query`, {
                 method: 'POST',
                 headers,
@@ -244,6 +371,7 @@ async function fetchGscSite(
                 }),
             }),
             fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/sitemaps`, { headers }),
+            inspectSiteWithCache(env, siteKey, siteUrl, headers, now),
         ]);
 
         if (!analyticsRes.ok) {
@@ -259,13 +387,19 @@ async function fetchGscSite(
 
         const analytics = parseGscAnalytics(await analyticsRes.json());
         const sitemaps = sitemapsRes.ok ? parseGscSitemaps(await sitemapsRes.json()) : { indexed: 0, discovered: 0, notIndexed: 0 };
+        const baseTotal = sitemaps.discovered > 0 ? sitemaps.discovered : inspectCache.checkedCount;
 
         return {
             status: 'ok',
             tokenExpired: false,
             siteUrl,
             accountEmail,
-            ...sitemaps,
+            indexed: inspectCache.indexedCount,
+            inspectTotal: inspectCache.totalCount,
+            inspectChecked: inspectCache.checkedCount,
+            inspectCheckedAt: inspectCache.completedAt ?? inspectCache.checkedAt,
+            discovered: sitemaps.discovered,
+            notIndexed: Math.max(0, baseTotal - inspectCache.indexedCount),
             ...analytics,
         };
     } catch (err) {
@@ -421,8 +555,8 @@ export async function collectDashboardSnapshot(env: Env, now: Date = new Date())
     const [adsterra, clickadu, filebrikGsc, shiftGsc, cfAnalytics, blogger] = await Promise.all([
         fetchAdsterra(env, windows),
         fetchClickadu(env, windows),
-        fetchGscSite(env, 'https://filebrik.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows),
-        fetchGscSite(env, 'https://shiftandtip.blogspot.com/', 'rathore.monty2002@gmail.com', env.GSC_SHIFTANDTIP_REFRESH_TOKEN, windows),
+        fetchGscSite(env, 'filebrik', 'https://filebrik.pages.dev/', 'praveshrathore2002@gmail.com', env.GSC_FILEBRIK_REFRESH_TOKEN, windows, now),
+        fetchGscSite(env, 'shiftandtip', 'https://shiftandtip.blogspot.com/', 'rathore.monty2002@gmail.com', env.GSC_SHIFTANDTIP_REFRESH_TOKEN, windows, now),
         fetchCfAnalytics(env, windows),
         fetchBlogger(env, now),
     ]);

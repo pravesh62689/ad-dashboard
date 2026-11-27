@@ -107,7 +107,7 @@ function renderGscCard(title: string, gsc: GscSiteData): string {
   </div>
   <p class="muted">${esc(gsc.siteUrl)} · ${esc(gsc.accountEmail)}${gsc.error ? ` · ${esc(gsc.error)}` : ''}</p>
   <div class="mini-grid">
-    <div><span class="k">Indexed</span><span class="v">${fmtNum(gsc.indexed)}</span></div>
+    <div><span class="k">Indexed${gsc.inspectCheckedAt ? ` (checked ${esc(gsc.inspectCheckedAt.slice(0, 10))})` : ''}</span><span class="v">${fmtNum(gsc.indexed)}/${fmtNum(gsc.inspectTotal ?? gsc.discovered)}</span></div>
     <div><span class="k">Discovered</span><span class="v">${fmtNum(gsc.discovered)}</span></div>
     <div><span class="k">Not Indexed</span><span class="v">${fmtNum(gsc.notIndexed)}</span></div>
     <div><span class="k">Clicks (30d)</span><span class="v">${fmtNum(gsc.clicks)}</span></div>

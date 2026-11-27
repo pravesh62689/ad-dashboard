@@ -68,3 +68,21 @@ export function parseGscSitemaps(payload: unknown): {
     const notIndexed = Math.max(0, discovered - indexed);
     return { indexed, discovered, notIndexed };
 }
+
+export function extractSitemapChildUrls(xml: string): string[] {
+    return [...xml.matchAll(/<sitemap>[\s\S]*?<loc>([^<]+)<\/loc>/gi)].map((m) => m[1].trim()).filter(Boolean);
+}
+
+export function extractSitemapPageUrls(xml: string): string[] {
+    return [...xml.matchAll(/<url>[\s\S]*?<loc>([^<]+)<\/loc>/gi)].map((m) => m[1].trim()).filter(Boolean);
+}
+
+export function isUrlIndexed(payload: unknown): boolean {
+    if (!payload || typeof payload !== 'object') return false;
+    const res = (payload as Record<string, unknown>).inspectionResult;
+    if (!res || typeof res !== 'object') return false;
+    const idx = (res as Record<string, unknown>).indexStatusResult;
+    if (!idx || typeof idx !== 'object') return false;
+    const obj = idx as Record<string, unknown>;
+    return obj.verdict === 'PASS' || obj.coverageState === 'Submitted and indexed';
+}

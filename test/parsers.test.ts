@@ -3,7 +3,14 @@ import { parseAdsterraBalance, parseAdsterraStats } from '../src/parsers/adsterr
 import { parseBloggerStatus } from '../src/parsers/blogger.js';
 import { parseCfWebAnalytics } from '../src/parsers/cfAnalytics.js';
 import { parseClickaduStats } from '../src/parsers/clickadu.js';
-import { isTokenExpiredError, parseGscAnalytics, parseGscSitemaps } from '../src/parsers/gsc.js';
+import {
+    extractSitemapChildUrls,
+    extractSitemapPageUrls,
+    isTokenExpiredError,
+    isUrlIndexed,
+    parseGscAnalytics,
+    parseGscSitemaps,
+} from '../src/parsers/gsc.js';
 import { build30DaySeries, getDateWindows } from '../src/parsers/utils.js';
 
 const NOW = new Date('2026-11-27T12:00:00.000Z');
@@ -98,6 +105,22 @@ describe('Google Search Console parsers', () => {
         expect(isTokenExpiredError(400, '{"error":"invalid_grant"}')).toBe(true);
         expect(isTokenExpiredError(401, 'Unauthorized')).toBe(true);
         expect(isTokenExpiredError(500, 'Internal error')).toBe(false);
+    });
+
+    it('extracts sitemap URLs and evaluates URL Inspection verdicts', () => {
+        const indexXml = '<sitemapindex><sitemap><loc>https://filebrik.pages.dev/sitemap-0.xml</loc></sitemap></sitemapindex>';
+        expect(extractSitemapChildUrls(indexXml)).toEqual(['https://filebrik.pages.dev/sitemap-0.xml']);
+
+        const urlsetXml = '<urlset><url><loc>https://filebrik.pages.dev/</loc></url></urlset>';
+        expect(extractSitemapPageUrls(urlsetXml)).toEqual(['https://filebrik.pages.dev/']);
+
+        expect(isUrlIndexed({ inspectionResult: { indexStatusResult: { verdict: 'PASS' } } })).toBe(true);
+        expect(
+            isUrlIndexed({ inspectionResult: { indexStatusResult: { verdict: 'NEUTRAL', coverageState: 'Submitted and indexed' } } }),
+        ).toBe(true);
+        expect(
+            isUrlIndexed({ inspectionResult: { indexStatusResult: { verdict: 'NEUTRAL', coverageState: 'URL is unknown to Google' } } }),
+        ).toBe(false);
     });
 });
 

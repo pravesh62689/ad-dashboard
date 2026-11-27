@@ -87,6 +87,9 @@ export interface GscSiteData {
     siteUrl: string;
     accountEmail: string;
     indexed: number;
+    inspectTotal?: number;
+    inspectChecked?: number;
+    inspectCheckedAt?: string | null;
     discovered: number;
     notIndexed: number;
     clicks: number;
